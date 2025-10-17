@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Ball Game</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: skyblue;
+    font-family: 'Trebuchet MS', sans-serif;
+    text-align: center;
+  }
+
+  #gameCanvas {
+    background: lightblue;
+    display: none;
+    margin: auto;
+    display: block;
+    border: 2px solid black;
+  }
+
+  #titleScreen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(to bottom, #00bfff, #0077b6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  h1 {
+    font-size: 60px;
+    color: yellow;
+    margin-bottom: 10px;
+  }
+
+  h2 {
+    font-size: 24px;
+    color: white;
+    margin-bottom: 30px;
+  }
+
+  button, select {
+    font-size: 20px;
+    padding: 10px 20px;
+    margin: 10px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  button:hover, select:hover {
+    opacity: 0.9;
+  }
+
+  #quitBtn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: none;
+    font-size: 18px;
+    background-color: red;
+    color: white;
+    border-radius: 10px;
+  }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 40px; }
+    h2 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="titleScreen">
+  <h1>Flappy Ball Game</h1>
+  <h2>Made by Huzaimza</h2>
+
+  <label for="colorPicker" style="font-size:20px;">Choose Ball Color:</label>
+  <select id="colorPicker">
+    <option value="yellow">Yellow</option>
+    <option value="red">Red</option>
+    <option value="blue">Blue</option>
+    <option value="green">Green</option>
+    <option value="orange">Orange</option>
+    <option value="purple">Purple</option>
+    <option value="black">Black</option>
+  </select>
+
+  <button id="startBtn">Start Game</button>
+</div>
+
+<canvas id="gameCanvas" width="400" height="500"></canvas>
+<button id="quitBtn">Quit</button>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const startBtn = document.getElementById('startBtn');
+  const quitBtn = document.getElementById('quitBtn');
+  const titleScreen = document.getElementById('titleScreen');
+  const colorPicker = document.getElementById('colorPicker');
+
+  let ball, pipes, score, gameInterval, gravity, jump, ballColor;
+
+  function startGame() {
+    titleScreen.style.display = 'none';
+    canvas.style.display = 'block';
+    quitBtn.style.display = 'block';
+
+    ballColor = colorPicker.value;
+
+    ball = { x: 50, y: 250, radius: 15, velocity: 0 };
+    pipes = [];
+    score = 0;
+    gravity = 0.4;
+    jump = -7;
+
+    if (gameInterval) clearInterval(gameInterval);
+    gameInterval = setInterval(updateGame, 20);
+  }
+
+  function quitGame() {
+    clearInterval(gameInterval);
+    canvas.style.display = 'none';
+    quitBtn.style.display = 'none';
+    titleScreen.style.display = 'flex';
+  }
+
+  function updateGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Move the ball
+    ball.velocity += gravity;
+    ball.y += ball.velocity;
+
+    // Draw the ball
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = ballColor;
+    ctx.fill();
+
+    // Draw a beak
+    ctx.beginPath();
+    ctx.moveTo(ball.x + ball.radius, ball.y - 5);
+    ctx.lineTo(ball.x + ball.radius + 10, ball.y);
+    ctx.lineTo(ball.x + ball.radius, ball.y + 5);
+    ctx.closePath();
+    ctx.fillStyle = "orange";
+    ctx.fill();
+
+    // Add new pipes
+    if (pipes.length === 0 || pipes[pipes.length - 1].x < 250) {
+      let gap = 120;
+      let topHeight = Math.random() * (canvas.height - gap - 100) + 50;
+      pipes.push({ x: canvas.width, top: topHeight, gap: gap });
+    }
+
+    // Move and draw pipes
+    for (let i = 0; i < pipes.length; i++) {
+      let p = pipes[i];
+      p.x -= 2;
+
+      ctx.fillStyle = 'green';
+      ctx.fillRect(p.x, 0, 40, p.top);
+      ctx.fillRect(p.x, p.top + p.gap, 40, canvas.height - (p.top + p.gap));
+
+      if (p.x + 40 < 0) {
+        pipes.splice(i, 1);
+        score++;
+      }
+
+      // Collision detection
+      if (
+        ball.x + ball.radius > p.x &&
+        ball.x - ball.radius < p.x + 40 &&
+        (ball.y - ball.radius < p.top ||
+         ball.y + ball.radius > p.top + p.gap)
+      ) {
+        quitGame();
+      }
+    }
+
+    // Check if ball hits the ground or top
+    if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+      quitGame();
+    }
+
+    // Score display
+    ctx.fillStyle = 'black';
+    ctx.font = '24px Arial';
+    ctx.fillText('Score: ' + score, 10, 30);
+  }
+
+  // Keyboard mode
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      ball.velocity = jump;
+    }
+  });
+
+  // Touch mode (for mobile)
+  canvas.addEventListener('touchstart', () => {
+    ball.velocity = jump;
+  });
+
+  // Also allow mouse click (for desktop)
+  canvas.addEventListener('mousedown', () => {
+    ball.velocity = jump;
+  });
+
+  startBtn.addEventListener('click', startGame);
+  quitBtn.addEventListener('click', quitGame);
+</script>
+
+</body>
+</html>
